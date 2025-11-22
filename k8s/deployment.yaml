@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: sentiment-service
-          image: sentiment-service:1.0
+          image: sentiment-service:1.1
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
