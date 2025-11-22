@@ -1,53 +1,20 @@
 package com.example;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.net.URI;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+@SpringBootApplication
 public class Main {
-    public static void main(String[] args) throws IOException {
-        int port = 8080;
-        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
-        server.createContext("/api/sentiment", new SentimentHandler());
-        server.setExecutor(null);
-        server.start();
-        System.out.println("Sentiment service started on port " + port);
+    public static void main(String[] args) {
+        SpringApplication.run(Main.class, args);
     }
-    static class SentimentHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
-                sendResponse(exchange, 405, "{\"error\":\"Method not allowed\"}");
-                return;
-            }
-            Map<String, String> queryParams = parseQuery(exchange.getRequestURI());
-            String text = queryParams.getOrDefault("text", "");
+    @RestController
+    static class SentimentController {
+        @GetMapping("/api/sentiment")
+        public SentimentResponse getSentiment(@RequestParam(name = "text", defaultValue = "") String text) {
             String sentiment = detectSentiment(text);
-            String json = "{\"sentiment\":\"" + sentiment + "\"}";
-            sendResponse(exchange, 200, json);
-        }
-        private Map<String, String> parseQuery(URI uri) throws IOException {
-            Map<String, String> result = new HashMap<>();
-            String query = uri.getRawQuery();
-            if (query == null || query.isEmpty()) {
-                return result;
-            }
-            String[] pairs = query.split("&");
-            for (String pair : pairs) {
-                String[] parts = pair.split("=", 2);
-                String key = URLDecoder.decode(parts[0], StandardCharsets.UTF_8);
-                String value = parts.length > 1
-                        ? URLDecoder.decode(parts[1], StandardCharsets.UTF_8)
-                        : "";
-                result.put(key, value);
-            }
-            return result;
+            return new SentimentResponse(sentiment);
         }
         private String detectSentiment(String text) {
             String lower = text.toLowerCase();
@@ -59,13 +26,17 @@ public class Main {
             }
             return "neutral";
         }
-        private void sendResponse(HttpExchange exchange, int statusCode, String body) throws IOException {
-            byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
-            exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
-            exchange.sendResponseHeaders(statusCode, bytes.length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(bytes);
-            }
+    }
+    static class SentimentResponse {
+        private String sentiment;
+        public SentimentResponse(String sentiment) {
+            this.sentiment = sentiment;
+        }
+        public String getSentiment() {
+            return sentiment;
+        }
+        public void setSentiment(String sentiment) {
+            this.sentiment = sentiment;
         }
     }
 }
